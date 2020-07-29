@@ -1,3 +1,5 @@
+import re
+
 class Document:
   def __init__(self, s: str):
     self.text = s
@@ -11,15 +13,38 @@ class Document:
   def parse(self):
     if self.at('- '):
       return self.parseSeq()
-    line = self.until('\n')
+    line = self.peek_line().strip()
+    
+    if ' #' in line:
+      line = line[0:line.index(' #')]
+
+    if line[0] in '"\'':
+      raise ValueError('not implemented quoted string')
+      # need to handle quoted
+
+    if ': ' in line:
+      return self.parseMap()
+
+    self.until('\n')
+
+    try: return int(line)
+    except ValueError: pass
+    try: return float(line)
+    except ValueError: pass
     return line
 
   def parseSeq(self):
     seq = []
     while self.take('- '):
       seq.append(self.parse())
-      self.pop()
     return seq
+  
+  def parseMap(self):
+    d = {}
+    while ': ' in self.peek_line():
+      key = self.until(': ')
+      d[key] = self.parse()
+    return d
 
   def at(self, s):
     return self.text[self.i:self.i + len(s)] == s
@@ -43,8 +68,9 @@ class Document:
 
   def until(self, c):
     s = self.text[self.i:self.text.index(c, self.i)]
-    self.i += len(s)
+    self.i += len(s) + len(c)
     return s
 
 def yaml(s: str):
   return Document(s).o
+
