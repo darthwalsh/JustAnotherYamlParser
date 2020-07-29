@@ -33,6 +33,9 @@ class Document:
   def peek(self):
     return self.text[self.i]
 
+  def peek_line(self):
+    return self.text[self.i:self.text.index('\n', self.i)]
+
   def pop(self):
     c = self.text[self.i]
     self.i += 1
