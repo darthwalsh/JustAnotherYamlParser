@@ -64,7 +64,11 @@ def test_plus():
 
 def test_times():
   g = lib.Bnf('"a" × 4')
-  assert g.expr == ("repeat", 4, 4, "a")
+
+
+def test_times_n():
+  g = lib.Bnf('"a" × n')
+  assert g.expr == ("repeat", "n", "n", "a")
 
 
 def test_rules():
@@ -119,3 +123,10 @@ def test_bad_string():
     lib.Bnf('"1\' "2"')
   assert '"2"' in str(e_info.value)
   assert 'expected' in str(e_info.value)
+
+
+def test_load():
+  library = lib.Lib()
+  library.add('c-indentation-indicator(m)', 'SKIP')
+  library.add('c-chomping-indicator(t)', 'SKIP')
+  library.load_defs()
