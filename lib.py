@@ -23,6 +23,7 @@ class Bnf:
   """
 
   def __init__(self, text: str):
+    #TODO maybe comments have semantics?
     self.text = re.sub(r'/\*.*?\*/', '', text, flags=re.DOTALL).strip()
     self.i = 0
     self.expr = self.parse()
@@ -152,3 +153,58 @@ class Lib:
         self.bnf[name] = Bnf(text)
       except Exception as e:
         raise type(e)(f"{name}: {str(e)}").with_traceback(sys.exc_info()[2])
+
+  def parse(self, text, rule):
+    return self.parse(text, self.bnf[rule].expr)
+
+  def parse(self, text, expr):
+    self.text = text
+    result, lastI = self.resolve(0, expr)
+    if lastI != len(text):
+      raise ValueError('remaining', text[lastI:])
+    return result
+
+  def resolve(self, i, expr):
+    if i == len(self.text):
+      raise ValueError('at end')
+    c = self.text[i]
+    if isinstance(expr, str):
+      if c == expr:
+        return c, i + 1
+    elif isinstance(expr, range):
+      if ord(c) in expr:
+        return c, i + 1
+    elif isinstance(expr, frozenset) or isinstance(expr, set):
+      items = set()
+      for e in expr:
+        result = self.resolve(i, e)
+        if result:
+          items.add(result)
+      if len(items) == 1:
+        return result
+      return items
+
+    elif isinstance(expr, tuple):
+      kind = expr[0]
+
+      if kind == 'concat':
+        nextI = i
+        items = []
+        for e in expr[1:]:
+          o, nextI = self.resolve(nextI, e)
+          items.append(o)
+
+        if len(items) == 1:
+          return items[0], nextI
+        return items, nextI
+
+      elif kind == 'repeat':
+        _, lo, hi, e = expr
+        
+
+      else:
+        raise ValueError('unknown tuple:', expr)
+
+
+    else:
+      raise ValueError('unknown type:', expr)
