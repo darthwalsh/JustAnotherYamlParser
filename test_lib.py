@@ -22,11 +22,16 @@ def run(text, expr, expected):
 
 
 def test_single_char():
-  assert get_lib().parse('c', 'c') == 'c'
+  assert get_lib().value('c', 'c') == 'c'
 
 
 def test_str():
-  assert get_lib().parse('yaml', ('concat', 'y', 'a', 'm', 'l')) == list('yaml')
+  assert get_lib().value('yaml', ('concat', 'y', 'a', 'm', 'l')) == 'yaml'
+
+
+def test_concat():
+  assert get_lib().value('abab', ('concat', ('concat', 'a', 'b'),
+                                  ('concat', 'a', 'b'))) == 'ab'
 
 
 def test_range():
@@ -46,7 +51,7 @@ def test_or_many():
       '0', {'0', '0'}) == 'Figure out multiple parse patterns'  # TODO
 
 
-##### TODO test below this 
+##### TODO test below this
 
 
 def test_repeat():

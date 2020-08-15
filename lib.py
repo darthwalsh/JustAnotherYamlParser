@@ -135,7 +135,18 @@ class Bnf:
     return s
 
 
+def solo(items):
+  if len(items) == 1:
+    return next(iter(items))
+  return items
+
+
+def compose(f, g):
+  return lambda x: f(g(x))
+
+
 class Lib:
+
   def __init__(self):
     self.bnf = {}
 
@@ -148,7 +159,8 @@ class Lib:
 
     for p in filter(None, productions):
       name, text = (s.strip() for s in p.split('::='))
-      if name in self.bnf: continue
+      if name in self.bnf:
+        continue
       try:
         self.bnf[name] = Bnf(text)
       except Exception as e:
@@ -163,6 +175,47 @@ class Lib:
     if lastI != len(text):
       raise ValueError('remaining', text[lastI:])
     return result
+
+  def value(self, text, expr):
+    self.text = text
+    poss = frozenset({(expr, lambda v: v)})
+
+    for c in self.text:
+      next = set()
+      for e, cb in poss:
+        self.recurse(c, e, lambda v, f: next.add((v, compose(f, cb))))
+
+      poss = frozenset(next)
+
+    results = set()
+    for _, cb in poss:
+      results.add(cb(None))
+
+    return solo(results)
+
+  def recurse(self, c, expr, cb):
+    if isinstance(expr, str):
+      if c == expr:
+        cb(None, lambda r: (r or '') + c)
+
+    elif isinstance(expr, tuple):
+      kind = expr[0]
+
+      if kind == 'concat':
+        try:
+          _, head, *rest = expr
+        except ValueError:
+          return
+        self.recurse(
+            head, c, lambda e, f: cb(
+                ('concat', *((e,) if e else ()), *rest), lambda r: 
+                f(r)))
+
+      else:
+        raise ValueError('unknown tuple:', expr)
+
+    else:
+      raise ValueError('unknown type:', expr)
 
   def resolve(self, i, expr):
     if i == len(self.text):
@@ -200,11 +253,9 @@ class Lib:
 
       elif kind == 'repeat':
         _, lo, hi, e = expr
-        
 
       else:
         raise ValueError('unknown tuple:', expr)
-
 
     else:
       raise ValueError('unknown type:', expr)
