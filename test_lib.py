@@ -8,12 +8,18 @@
 
 import lib
 import math
+import pytest
+
+library = None
+
 
 def get_lib():
-  library = lib.Lib()
-  library.add('c-indentation-indicator(m)', 'SKIP')
-  library.add('c-chomping-indicator(t)', 'SKIP')
-  library.load_defs()
+  global library
+  if not library:
+    library = lib.Lib()
+    library.add('c-indentation-indicator(m)', 'SKIP')
+    library.add('c-chomping-indicator(t)', 'SKIP')
+    library.load_defs()
   return library
 
 
@@ -26,7 +32,7 @@ def test_single_char():
 
 
 def test_str():
-  assert get_lib().parse('yaml', ('concat', 'y', 'a', 'm', 'l')) == list('yaml')
+  assert get_lib().parse('az', ('concat', 'a', 'z')) == 'az'
 
 
 def test_range():
@@ -41,56 +47,53 @@ def test_or_repeat():
   assert get_lib().parse('0', {'0', '0'}) == '0'
 
 
+@pytest.mark.xfail
 def test_or_many():
   assert get_lib().parse(
       '0', {'0', '0'}) == 'Figure out multiple parse patterns'  # TODO
 
 
-##### TODO test below this 
-
-
-def test_repeat():
-  assert get_lib().parse('0', ("repeat", 0, math.inf, "a")) == '0'
-
-
-
 def test_star():
-  g = lib.Bnf('"a"*')
-  assert g.expr == ("repeat", 0, math.inf, "a")
+  assert get_lib().parse('a', ("repeat", 0, math.inf, "a")) == 'a'
 
 
 def test_plus():
-  g = lib.Bnf('"a"+')
-  assert g.expr == ("repeat", 1, math.inf, "a")
+  assert get_lib().parse('a', ("repeat", 1, math.inf, "a")) == 'a'
+
+
+def test_plus_not_match():
+  assert get_lib().parse('b', {'b', ("repeat", 1, math.inf, "a")}) == 'b'
 
 
 def test_times():
-  g = lib.Bnf('"a" × 4')
+  assert get_lib().parse('aaaa', ("repeat", 4, 4, "a")) == 'aaaa'
 
 
+@pytest.mark.xfail
 def test_times_n():
-  g = lib.Bnf('"a" × n')
-  assert g.expr == ("repeat", "n", "n", "a")
+  assert get_lib().parse(
+      'aaaa', ("repeat", "n", "n", "a")) == 'Figure out how to have variables?'
 
 
 def test_rules():
-  g = lib.Bnf('s-indent(<n)')
-  assert g.expr == ("rule", "s-indent(<n)")
+  assert get_lib().parse('x2A', ("rule", "ns-esc-8-bit")) == 'x2A'
 
 
 def test_diff():
-  g = lib.Bnf('dig - #x30')
-  assert g.expr == ("diff", ("rule", "dig"), "0")
+  diff = ("diff", range(0x20, 0x7F), "0", range(0x35, 0x3A))
+
+  assert get_lib().parse('1', diff) == '1'
+
+  with pytest.raises(ValueError) as e_info:
+    get_lib().parse('0', diff)
+  assert 'no results' in str(e_info.value)
+
+  with pytest.raises(ValueError) as e_info:
+    get_lib().parse('5', diff)
+  assert 'no results' in str(e_info.value)
 
 
-def test_2diff():
-  g = lib.Bnf('dig - #x30 - #x31')
-  assert g.expr == ("diff", ("rule", "dig"), "0", "1")
-
-
-def test_parens():
-  g = lib.Bnf('"x" (hex × 2 ) "-"')
-  assert g.expr == ("concat", "x", ("repeat", 2, 2, ("rule", "hex")), "-")
+##### TODO convert to parse test below this
 
 
 def test_switch():

@@ -1,7 +1,14 @@
 from pathlib import Path
+from typing import Callable
 import math
 import re
 import sys
+
+
+def solo(items, default=None):
+  if len(items) == 1:
+    return next(iter(items))
+  return default or items
 
 
 class Bnf:
@@ -55,10 +62,7 @@ class Bnf:
     while True:
       items.add(self.parseConcat())
       if not self.try_take(r'\|'):
-        if len(items) == 1:
-          [item] = items
-          return item
-        return frozenset(items)
+        return solo(frozenset(items))
 
   def parseConcat(self):
     items = []
@@ -67,10 +71,7 @@ class Bnf:
       if item:
         items.append(item)
       else:
-        if len(items) == 1:
-          [item] = items
-          return item
-        return ('concat', *items)
+        return solo(items, ('concat', *items))
 
   def parseDiff(self):
     subtrahend = self.parseRepeat()
@@ -135,7 +136,14 @@ class Bnf:
     return s
 
 
+def str_concat(head, tail):
+  if isinstance(head, str) and isinstance(tail, str):
+    return head + tail
+  return solo((head, *(tail if tail is not None else ())))
+
+
 class Lib:
+
   def __init__(self):
     self.bnf = {}
 
@@ -148,7 +156,8 @@ class Lib:
 
     for p in filter(None, productions):
       name, text = (s.strip() for s in p.split('::='))
-      if name in self.bnf: continue
+      if name in self.bnf:
+        continue
       try:
         self.bnf[name] = Bnf(text)
       except Exception as e:
@@ -159,52 +168,70 @@ class Lib:
 
   def parse(self, text, expr):
     self.text = text
-    result, lastI = self.resolve(0, expr)
-    if lastI != len(text):
-      raise ValueError('remaining', text[lastI:])
-    return result
+    results = set()
+    self.resolve(0, expr, lambda v, i: results.add(v) if i == len(text) else 0)
+    if not results:
+      raise ValueError('no results')
+    return solo(results)
 
-  def resolve(self, i, expr):
-    if i == len(self.text):
-      raise ValueError('at end')
-    c = self.text[i]
+  def resolve(self, i, expr, cb: Callable[[object, int], None]) -> None:
     if isinstance(expr, str):
-      if c == expr:
-        return c, i + 1
+      if i < len(self.text) and self.text[i] == expr:
+        cb(self.text[i], i + 1)
+
     elif isinstance(expr, range):
-      if ord(c) in expr:
-        return c, i + 1
+      if i < len(self.text) and ord(self.text[i]) in expr:
+        cb(self.text[i], i + 1)
+
     elif isinstance(expr, frozenset) or isinstance(expr, set):
-      items = set()
       for e in expr:
-        result = self.resolve(i, e)
-        if result:
-          items.add(result)
-      if len(items) == 1:
-        return result
-      return items
+        result = self.resolve(i, e, cb)
 
     elif isinstance(expr, tuple):
       kind = expr[0]
 
       if kind == 'concat':
-        nextI = i
-        items = []
-        for e in expr[1:]:
-          o, nextI = self.resolve(nextI, e)
-          items.append(o)
+        if len(expr) == 1:
+          cb(None, i)
+          return
 
-        if len(items) == 1:
-          return items[0], nextI
-        return items, nextI
+        self.resolve(
+            i, expr[1], lambda v, ii: self.resolve(
+                ii, ('concat', *expr[2:]), lambda vv, iii: cb(
+                    str_concat(v, vv), iii)))
 
       elif kind == 'repeat':
         _, lo, hi, e = expr
-        
+
+        if not lo:
+          cb(None, i)
+
+        if hi:
+          dec = ('repeat', max(lo - 1, 0), hi - 1, e)
+          self.resolve(
+              i, e, lambda v, ii: self.resolve(
+                  ii, dec, lambda vv, iii: cb(str_concat(v, vv), iii)))
+
+      elif kind == 'rule':
+        self.resolve(i, self.bnf[expr[1]].expr, cb)
+
+      elif kind == 'diff':
+        _, e, *subtrahends = expr
+
+        allowed = True
+
+        def not_allowed(v, i):
+          nonlocal allowed
+          allowed = False
+
+        for s in subtrahends:
+          self.resolve(i, s, not_allowed)
+
+        if allowed:
+          self.resolve(i, e, cb)
 
       else:
         raise ValueError('unknown tuple:', expr)
-
 
     else:
       raise ValueError('unknown type:', expr)
