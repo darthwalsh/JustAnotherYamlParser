@@ -35,6 +35,10 @@ def test_str():
   assert get_lib().parse('az', ('concat', 'a', 'z')) == 'az'
 
 
+def test_empty():
+  assert get_lib().parse('', ('concat',)) == None
+
+
 def test_range():
   assert get_lib().parse('2', range(0x30, 0x3A)) == '2'
 
@@ -47,10 +51,10 @@ def test_or_repeat():
   assert get_lib().parse('0', {'0', '0'}) == '0'
 
 
-@pytest.mark.xfail
+@pytest.mark.xfail  # TODO
 def test_or_many():
   assert get_lib().parse(
-      '0', {'0', '0'}) == 'Figure out multiple parse patterns'  # TODO
+      '0', {'0', '0'}) == 'Figure out multiple parse patterns'
 
 
 def test_star():
@@ -69,7 +73,7 @@ def test_times():
   assert get_lib().parse('aaaa', ("repeat", 4, 4, "a")) == 'aaaa'
 
 
-@pytest.mark.xfail
+@pytest.mark.xfail  # TODO
 def test_times_n():
   assert get_lib().parse(
       'aaaa', ("repeat", "n", "n", "a")) == 'Figure out how to have variables?'
@@ -93,45 +97,6 @@ def test_diff():
   assert 'no results' in str(e_info.value)
 
 
-##### TODO convert to parse test below this
-
-
+@pytest.mark.xfail # TODO
 def test_switch():
-  g = lib.Bnf('t=a⇒"-" t=b⇒"+"')
-  assert g.expr == ("switch", "t", "a", "-", "b", "+")
-
-
-def test_empty():
-  g = lib.Bnf(' ')
-  assert g.expr == ('concat',)
-
-
-def test_comment():
-  g = lib.Bnf(' /* Empty */ ')
-  assert g.expr == ('concat',)
-
-
-def test_comments():
-  g = lib.Bnf('[#x41-#x46] /* A-F */ | [#x61-#x66] /* a-f */ ')
-  assert g.expr == {range(0x41, 0x47), range(0x61, 0x67)}
-
-
-def test_remaining():
-  with pytest.raises(ValueError) as e_info:
-    lib.Bnf('"1" ^^garbage')
-  assert 'garbage' in str(e_info.value)
-  assert 'remaining' in str(e_info.value)
-
-
-def test_bad_string():
-  with pytest.raises(ValueError) as e_info:
-    lib.Bnf('"1\' "2"')
-  assert '"2"' in str(e_info.value)
-  assert 'expected' in str(e_info.value)
-
-
-def test_load():
-  library = lib.Lib()
-  library.add('c-indentation-indicator(m)', 'SKIP')
-  library.add('c-chomping-indicator(t)', 'SKIP')
-  library.load_defs()
+  assert get_lib().parse('-', ("switch", "t", "a", "-", "b", "+")) == '-'

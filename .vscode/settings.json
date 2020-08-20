@@ -6,6 +6,8 @@
   "python.testing.nosetestsEnabled": false,
   "python.testing.pytestEnabled": true,
   "cSpell.words": [
-    "pytest"
+    "isdigit",
+    "pytest",
+    "xfail"
   ]
 }
