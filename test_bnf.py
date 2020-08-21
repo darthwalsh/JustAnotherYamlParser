@@ -73,7 +73,13 @@ def test_times_n():
 
 def test_rules():
   g = lib.Bnf('s-indent(<n)')
-  assert g.expr == ("rule", "s-indent(<n)")
+  assert g.expr == ("rule", "s-indent", "<n")
+
+  g = lib.Bnf('nb-json')
+  assert g.expr == ("rule", "nb-json")
+
+  g = lib.Bnf('s-separate(n,c)')
+  assert g.expr == ("rule", "s-separate", "n", "c")
 
 
 def test_diff():
@@ -127,6 +133,6 @@ def test_bad_string():
 
 def test_load():
   library = lib.Lib()
-  library.add('c-indentation-indicator(m)', 'SKIP')
-  library.add('c-chomping-indicator(t)', 'SKIP')
+  library.add('c-indentation-indicator', 'SKIP')
+  library.add('c-chomping-indicator', 'SKIP')
   library.load_defs()

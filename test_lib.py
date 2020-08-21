@@ -16,10 +16,11 @@ library = None
 def get_lib():
   global library
   if not library:
-    library = lib.Lib()
-    library.add('c-indentation-indicator(m)', 'SKIP')
-    library.add('c-chomping-indicator(t)', 'SKIP')
-    library.load_defs()
+    l = lib.Lib()
+    l.add('c-indentation-indicator', 'SKIP')
+    l.add('c-chomping-indicator', 'SKIP')
+    l.load_defs()
+    library = l
   return library
 
 

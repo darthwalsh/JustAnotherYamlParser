@@ -24,7 +24,7 @@ class Bnf:
     "a"*            Repeat is tuple ("repeat", 0, inf, "a")
     "a"+            Repeat is tuple ("repeat", 1, inf, "a")
     "a" × 4         Repeat is tuple ("repeat", 4, 4, "a")
-    ns-char         Rule is tuple ("rule", "ns-char")
+    l-empty(n,c)    Rule is tuple ("rule", "l-empty", "n", "c")
     dig - "0" - "1" Difference is tuple ("diff", ("rule", "dig"), "0", "1")
     t=a⇒"-" t=b⇒"+" Switch is tuple ("switch", "t", "a", "-", "b", "+")
   """
@@ -96,6 +96,9 @@ class Bnf:
       return ('repeat', lo, hi, e)
     return e
 
+  # Avoid capturing strings followed by '=' because that is switch name
+  ident_reg = r'^((?:[\w-]|\+\w)+)(\([\w(),<≤/\+-]+\))?(?!\s*=)'
+
   def parseSingle(self):
     if self.try_take('"'):
       self.try_take(r'\\')
@@ -110,9 +113,14 @@ class Bnf:
       end = int(self.take(r'[0-9A-F]{1,6}'), 16) + 1
       self.take(r'\]')
       return range(begin, end)
-    elif name := self.try_take(r'\w[\w(),<≤/\-]*(?!\s*=)'):
-      # Avoid capturing strings followed by '=' because that is switch name
-      return "rule", name
+    elif name := self.try_take(Bnf.ident_reg):
+      match = re.match(Bnf.ident_reg, name)
+      name, args = match.groups()
+      if '(' in name:
+        raise ValueError(name)
+
+      args = args.strip('()').split(',') if args else ()
+      return "rule", name, *args
     elif self.try_take(r'\('):
       parens = self.parse()
       self.take(r'\)')
@@ -148,6 +156,8 @@ class Lib:
     self.bnf = {}
 
   def add(self, name, rule):
+    if name in self.bnf:
+      raise ValueError(name, 'already in bnf')
     self.bnf[name] = rule
 
   def load_defs(self):
@@ -156,12 +166,14 @@ class Lib:
 
     for p in filter(None, productions):
       name, text = (s.strip() for s in p.split('::='))
+      name = Bnf(name).expr[1]
       if name in self.bnf:
         continue
       try:
-        self.bnf[name] = Bnf(text)
+        rule = Bnf(text)
       except Exception as e:
         raise type(e)(f"{name}: {str(e)}").with_traceback(sys.exc_info()[2])
+      self.add(name, rule)
 
   def parse(self, text, rule):
     return self.parse(text, self.bnf[rule].expr)
