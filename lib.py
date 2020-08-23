@@ -248,3 +248,72 @@ class Lib:
 
     else:
       raise ValueError('unknown type:', expr)
+
+_fail = object()
+
+def exact_match(pattern, s):
+  return re.match('^(' + pattern + '\n)$', s, re.VERBOSE)
+
+def parse_bool(s):
+  if exact_match(r'y|Y|yes|Yes|YES|true|True|TRUE|on|On|ON', s):
+    return True
+  if exact_match(r'n|N|no|No|NO|false|False|FALSE|off|Off|OFF', s):
+    return False
+  return _fail
+
+def parse_null(s):
+  if exact_match(r'''
+~ # (canonical)
+|null|Null|NULL # (English)
+| # (Empty)''', s):
+    return None
+  return _fail
+
+def parse_int(s):
+  mult = 1
+  if s[0] == '+':
+    s = s[1:]
+  elif s[0] == '-':
+    mult = -1
+    s = s[1:]
+
+  def match_base(pattern, base):
+      if m := exact_match(pattern, s):
+        return mult * int(m.group(1).replace('_', ''), base)
+
+  sexagesimal = None
+  if m := exact_match(r'[1-9][0-9_]*(:[0-5]?[0-9])', s):
+    n = 0
+    for p in s.split(':'):
+      n = n * 60 + int(p)
+    sexagesimal = n
+  
+
+  return next(n for n in (
+    match_base(r'0b([0-1_]+)', 2),
+    match_base(r'0([0-7_]+)', 8),
+    match_base(r'(0|[1-9][0-9_]*)', 10),
+    match_base(r'0x([0-9a-fA-F_]+)', 16),
+    sexagesimal,
+    _fail
+   ) if n is not None)
+
+def node_value(s, schema = None):
+  if not isinstance(s, str):
+    return s
+
+  if schema:
+    f = globals()['parse_' + schema]
+    if not f:
+      raise ValueError('schema', schema, 'not recognized')
+    val = f(s)
+    if val is _fail:
+      raise ValueError(s, 'is not', schema)
+    return val
+
+  for n, f in globals().items():
+    if n.startswith('parse_'):
+      if (val := f(s)) is not _fail:
+        return val
+
+  return s
