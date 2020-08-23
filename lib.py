@@ -167,7 +167,8 @@ class Lib:
     for p in filter(None, productions):
       name, text = (s.strip() for s in p.split('::='))
       name = Bnf(name).expr[1]
-      if name in self.bnf:
+      #TODO hardcode c-indentation-indicator and c-chomping-indicator
+      if name in self.bnf or name in ('c-indentation-indicator', 'c-chomping-indicator'):
         continue
       try:
         rule = Bnf(text)

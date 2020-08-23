@@ -17,8 +17,6 @@ def get_lib():
   global library
   if not library:
     l = lib.Lib()
-    l.add('c-indentation-indicator', 'SKIP')
-    l.add('c-chomping-indicator', 'SKIP')
     l.load_defs()
     library = l
   return library

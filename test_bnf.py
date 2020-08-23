@@ -133,6 +133,4 @@ def test_bad_string():
 
 def test_load():
   library = lib.Lib()
-  library.add('c-indentation-indicator', 'SKIP')
-  library.add('c-chomping-indicator', 'SKIP')
   library.load_defs()
