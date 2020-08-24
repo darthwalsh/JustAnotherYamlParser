@@ -298,6 +298,35 @@ def parse_int(s):
     _fail
    ) if n is not None)
 
+def parse_float(s):
+  if exact_match(r'0+', s):
+    return 0.0
+
+  if exact_match(r'\.(nan|NaN|NAN)', s):
+    return math.nan
+
+  mult = 1
+  if s[0] == '+':
+    s = s[1:]
+  elif s[0] == '-':
+    mult = -1
+    s = s[1:]
+
+  if exact_match(r'\.(inf|Inf|INF)', s):
+    return mult * math.inf
+
+  if exact_match(r'([0-9][0-9_]*)?\.[0-9_]*([eE][-+][0-9]+)?', s):
+    if s == '.': return _fail
+    return mult * float(s.replace('_', ''))
+
+  if m := exact_match(r'[0-9][0-9_]*(:[0-5]?[0-9])+\.[0-9_]*', s):
+    ss = 0.0
+    for p in s.split(':'):
+      ss = ss * 60 + float(p.replace('_', ''))
+    return ss
+
+  return _fail
+
 def node_value(s, schema = None):
   if not isinstance(s, str):
     return s
@@ -311,9 +340,8 @@ def node_value(s, schema = None):
       raise ValueError(s, 'is not', schema)
     return val
 
-  for n, f in globals().items():
-    if n.startswith('parse_'):
-      if (val := f(s)) is not _fail:
-        return val
+  for schema in 'bool null int float'.split():
+    if (val := globals()['parse_' + schema](s)) is not _fail:
+      return val
 
   return s
