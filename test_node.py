@@ -10,7 +10,7 @@
 
 import math
 from datetime import datetime, timedelta, timezone
-from lib import node_value as nv
+from node import node_value as nv
 
 
 def test_bool():
