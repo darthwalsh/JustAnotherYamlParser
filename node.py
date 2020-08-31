@@ -152,4 +152,4 @@ def node_value(s, schema = None):
     if (val := globals()['parse_' + schema](s)) is not _fail:
       return val
 
-  return s
+  raise ValueError('no types parse', s)
