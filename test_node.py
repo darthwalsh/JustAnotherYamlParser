@@ -6,9 +6,9 @@
       pytest test_node.py
 """
 
-#TODO !!binary !!merge !!str
-
 import math
+import pytest
+
 from datetime import datetime, timedelta, timezone
 from node import node_value as nv
 
@@ -104,8 +104,7 @@ def test_timestamp():
   assert nv('2001-2-3t4:05:06.789 +1') == dtz
   assert nv('2001-2-3T4:05:06.789+1') == dtz
 
-  west = dtz.replace(
-      tzinfo=timezone(-timedelta(hours=11, minutes=45)))
+  west = dtz.replace(tzinfo=timezone(-timedelta(hours=11, minutes=45)))
   assert nv('2001-2-3 4:05:06.789-11:45') == west
 
   utc = dtz.replace(tzinfo=timezone.utc)
@@ -118,3 +117,20 @@ def test_timestamp():
   assert nv('96-2-3 4:05:06.789 +1') == '96-2-3 4:05:06.789 +1'
   assert nv('96-02-03') == '96-02-03'
   assert nv('2001-2-3') == '2001-2-3'
+
+
+def test_str():
+  assert nv('0', 'str') == '0'
+  assert nv('', 'str') == ''
+  assert nv('a') == 'a'
+
+
+# cSpell:disable
+def test_binary():
+  assert nv('SGVsbG8sIFdvcmxkIQ==', 'binary') == b'Hello, World!'
+  assert nv('SGVsbG8sIFdvcmxkIQ==') == 'SGVsbG8sIFdvcmxkIQ=='
+  assert nv('SGVsbG8sIFd \n\tvcmxkIQ==', 'binary') == b'Hello, World!'
+  assert nv('', 'binary') == b''
+  with pytest.raises(ValueError):
+    nv('~', 'binary')
+  #cSpell:enable

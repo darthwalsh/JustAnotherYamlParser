@@ -1,3 +1,4 @@
+import base64
 import datetime
 import math
 import re
@@ -32,8 +33,8 @@ def parse_int(s):
     s = s[1:]
 
   def match_base(pattern, base):
-      if m := exact_match(pattern, s):
-        return mult * int(m.group(1).replace('_', ''), base)
+    if m := exact_match(pattern, s):
+      return mult * int(m.group(1).replace('_', ''), base)
 
   sexagesimal = None
   if m := exact_match(r'[1-9][0-9_]*(:[0-5]?[0-9])', s):
@@ -41,7 +42,7 @@ def parse_int(s):
     for p in s.split(':'):
       n = n * 60 + int(p)
     sexagesimal = n
-  
+
 
   return next(n for n in (
     match_base(r'0b([0-1_]+)', 2),
@@ -126,6 +127,12 @@ def parse_timestamp(s):
 
   return _fail
 
+def parse_str(s):
+  return s
+
+def parse_binary(s):
+  return base64.b64decode(re.sub(r'\s', '', s), validate=True)
+
 
 def node_value(s, schema = None):
   if not isinstance(s, str):
@@ -140,7 +147,8 @@ def node_value(s, schema = None):
       raise ValueError(s, 'is not', schema)
     return val
 
-  for schema in 'bool null int float timestamp'.split():
+  # MAYBE implement merge value yaml
+  for schema in 'bool null int float timestamp str binary'.split():
     if (val := globals()['parse_' + schema](s)) is not _fail:
       return val
 
