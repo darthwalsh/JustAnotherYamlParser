@@ -1,5 +1,6 @@
 from pathlib import Path
 from typing import Callable
+import datetime
 import math
 import re
 import sys
@@ -252,7 +253,7 @@ class Lib:
 _fail = object()
 
 def exact_match(pattern, s):
-  return re.match('^(' + pattern + '\n)$', s, re.VERBOSE)
+  return re.match('^(?:' + pattern + '\n)$', s, re.VERBOSE)
 
 def parse_bool(s):
   if exact_match(r'y|Y|yes|Yes|YES|true|True|TRUE|on|On|ON', s):
@@ -327,6 +328,52 @@ def parse_float(s):
 
   return _fail
 
+def zfill_digits(s):
+  return re.sub(r'(?<!\d)(\d)(?!\d)', r'0\1', s)
+
+def parse_timestamp(s):
+  if exact_match(r'[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]', s):
+    return datetime.datetime.fromisoformat(s).replace(tzinfo=datetime.timezone.utc)
+
+  if m := exact_match(r'''
+      (
+        [0-9][0-9][0-9][0-9] # (year)
+        -[0-9][0-9]? # (month)
+        -[0-9][0-9]? # (day)
+      )
+      (?:[Tt]|[ \t]+)
+      (
+        [0-9][0-9]? # (hour)
+        :[0-9][0-9] # (minute)
+        :[0-9][0-9] # (second)
+      )
+      (\.[0-9]*)? # (fraction)
+      [ \t]* # not in spec regex, but in spec examples
+      (?:
+        (Z) |
+        ([-+][0-9][0-9]?(:[0-9][0-9])?)
+      )?''', s):
+    ymd, hms, fs, z, tz, tzs = m.groups()
+
+    fs = fs.ljust(7, '0') if fs else ''
+
+    if tz:
+      if not tzs:
+        tz += ':00'
+    elif z:
+      tz = '+00:00'
+    else:
+      tz = ''
+
+    iso = zfill_digits(f"{ymd}T{hms}{fs}{tz}")
+    val = datetime.datetime.fromisoformat(iso)
+    if not val.tzinfo:
+      val = val.replace(tzinfo=datetime.timezone.utc)
+    return val
+
+  return _fail
+
+
 def node_value(s, schema = None):
   if not isinstance(s, str):
     return s
@@ -340,7 +387,7 @@ def node_value(s, schema = None):
       raise ValueError(s, 'is not', schema)
     return val
 
-  for schema in 'bool null int float'.split():
+  for schema in 'bool null int float timestamp'.split():
     if (val := globals()['parse_' + schema](s)) is not _fail:
       return val
 

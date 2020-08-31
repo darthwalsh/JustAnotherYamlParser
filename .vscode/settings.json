@@ -11,7 +11,9 @@
     "mult",
     "productionset",
     "pytest",
+    "strptime",
     "submodules",
+    "tzinfo",
     "xfail"
   ]
 }
