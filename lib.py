@@ -162,7 +162,8 @@ class Lib:
     self.bnf[name] = rule
 
   def load_defs(self):
-    with open((Path(__file__).parent / 'productions.bnf').resolve()) as f:
+    productions_path = (Path(__file__).parent / 'productions.bnf').resolve()
+    with open(productions_path, encoding="utf-8") as f:
       productions = f.read().split('\n\n')
 
     for p in filter(None, productions):

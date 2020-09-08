@@ -15,5 +15,6 @@
     "submodules",
     "tzinfo",
     "xfail"
-  ]
+  ],
+  "python.pythonPath": "env\\Scripts\\python.exe"
 }
