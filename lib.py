@@ -178,9 +178,6 @@ class Lib:
         raise type(e)(f"{name}: {str(e)}").with_traceback(sys.exc_info()[2])
       self.add(name, rule)
 
-  def parse(self, text, rule):
-    return self.parse(text, self.bnf[rule].expr)
-
   def parse(self, text, expr):
     self.text = text
     results = set()

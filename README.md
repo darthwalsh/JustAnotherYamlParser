@@ -26,7 +26,7 @@ Run tets:
 
 ## Regenerating productions.bnf
 
-At https://yaml.org/spec/1.2/spec.html run in dev console:
+At https://yaml.org/spec/1.2.1/ run in dev console:
 
 ```javascript
 copy([...new Set([...document.getElementsByClassName("productionset")]
