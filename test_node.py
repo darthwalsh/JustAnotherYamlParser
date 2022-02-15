@@ -133,4 +133,4 @@ def test_binary():
   assert nv('', 'binary') == b''
   with pytest.raises(ValueError):
     nv('~', 'binary')
-  #cSpell:enable
+#cSpell:enable

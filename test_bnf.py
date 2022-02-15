@@ -64,6 +64,7 @@ def test_plus():
 
 def test_times():
   g = lib.Bnf('"a" × 4')
+  assert g.expr == ("repeat", 4, 4, "a")
 
 
 def test_times_n():
