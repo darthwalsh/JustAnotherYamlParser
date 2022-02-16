@@ -18,21 +18,25 @@ class Bnf:
   Spec 4.1. Production Syntax
   Represents different entries using python expressions:
     - Atomic terms:
-    "abc"           Text string is str "abc" (no backslash escaping)
-    'c'             Text character is str "c" (no backslash escaping)
-    x30            Escaped character is str "0"
-    [xA0-xD7FF]     Character range is exclusive range(0xA0, 0xD800)
-    l-empty(n,c)    Production is tuple ("rule", "l-empty", "n", "c")
-    TODO fix below:
-    - TODO Lookaround
-    "a" "b"         Concatenation is tuple ("concat", "a", "b")
-    "a" | "b"       Choice is frozenset({"a", "b"})
-    "a"?            Option is tuple ("repeat", 0, 1, "a")
-    "a"*            Repeat is tuple ("repeat", 0, inf, "a")
-    "a"+            Repeat is tuple ("repeat", 1, inf, "a")
-    "a" × 4         Repeat is tuple ("repeat", 4, 4, "a")
-    dig - "0" - "1" Difference is tuple ("diff", ("rule", "dig"), "0", "1")
-    t=a⇒"-" t=b⇒"+" Switch is tuple ("switch", "t", "a", "-", "b", "+")
+    "abc"                Text string is str "abc" (no backslash escaping)
+    'c'                  Text character is str "c" (no backslash escaping)
+    x30                  Escaped character is str "0"
+    [xA0-xD7FF]          Character range is exclusive range(0xA0, 0xD800)
+    l-empty(n,c)         Production is tuple ("rule", "l-empty", "n", "c")
+    - Lookarounds
+    [ lookahead = 'c' ]  Production is ("lookahead", true, "c")
+    [ lookahead ≠ 'c' ]  Production is ("lookahead", false, "c")
+    [ lookbehind = 'c' ] Production is ("lookbehind", "c")
+    TODO fix below
+    - A special production
+    "a" "b"              Concatenation is tuple ("concat", "a", "b")
+    "a" | "b"            Choice is frozenset({"a", "b"})
+    "a"?                 Option is tuple ("repeat", 0, 1, "a")
+    "a"*                 Repeat is tuple ("repeat", 0, inf, "a")
+    "a"+                 Repeat is tuple ("repeat", 1, inf, "a")
+    "a" × 4              Repeat is tuple ("repeat", 4, 4, "a")
+    dig - "0" - "1"      Difference is tuple ("diff", ("rule", "dig"), "0", "1")
+    t=a⇒"-" t=b⇒"+"      Switch is tuple ("switch", "t", "a", "-", "b", "+")
   """
 
   def __init__(self, text: str):
@@ -102,12 +106,6 @@ class Bnf:
       return ('repeat', lo, hi, e)
     return e
 
-  def parseString(self):
-    cs = []
-    while not self.try_take('"'):
-      cs.append(self.take())
-    return ''.join(cs)
-
   # Avoid capturing strings followed by '=' because that is switch name
   ident_reg = r'^((?:[\w-]|\+\w)+)(\([\w(),<≤/\+-]+\))?(?!\s*=)'
 
@@ -134,12 +132,35 @@ class Bnf:
 
       args = args.strip('()').split(',') if args else ()
       return "rule", name, *args
+    elif self.try_take(r'\[ look'):
+      return self.parseLookaround()
     elif self.try_take(r'\('):
       parens = self.parse()
       self.take(r'\)')
       return parens
     else:
       return None
+
+  def parseLookaround(self):
+    if self.try_take('ahead'):
+      pos = bool(self.try_take('='))
+      if not pos:
+        self.take('≠')
+      e = self.parseSingle()
+      self.take(']')
+      return ("lookahead", pos, e)
+    
+    self.take('behind =')
+    e = self.parseSingle()
+    self.take(']')
+    return ("lookbehind", e)
+
+
+  def parseString(self):
+    cs = []
+    while not self.try_take('"'):
+      cs.append(self.take())
+    return ''.join(cs)
 
   def try_take(self, pattern='.') -> str:
     m = re.match(pattern, self.text[self.i:])
