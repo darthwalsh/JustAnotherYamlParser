@@ -31,7 +31,6 @@ class Bnf:
     <start-of-line>      Start of line is ("^",)
     <end-of-input>       End of whole text stream is ("$",)
     <empty>              Empty string is redundant -- would already be ("concat",)
-    TODO fix below
     "a" "b"              Concatenation is tuple ("concat", "a", "b")
     "a" | "b"            Alternation is frozenset({"a", "b"})
     "a"?                 Option is tuple ("repeat", 0, 1, "a")
@@ -39,7 +38,6 @@ class Bnf:
     "a"+                 Repeat is tuple ("repeat", 1, inf, "a")
     "a"{4}               Repeat is tuple ("repeat", 4, 4, "a")
     dig - "0" - "1"      Difference is tuple ("diff", ("rule", "dig"), "0", "1")
-    t=a⇒"-" t=b⇒"+"      Switch is tuple ("switch", "t", "a", "-", "b", "+")
   """
 
   def __init__(self, text: str):
@@ -52,23 +50,7 @@ class Bnf:
                        self.expr)
 
   def parse(self):
-    return self.parseSwitch()
-
-  def parseSwitch(self):
-    prefix = r'(\w+)\s*=\s*([\w\-]+)\s*⇒'
-    signal = self.try_take(prefix)
-    if not signal:
-      return self.parseOr()
-
-    var, val = re.match(prefix, signal).groups()
-    switch = ["switch", var, val, self.parseOr()]
-    while self.try_take(var):
-      self.take('=')
-      switch.append(self.take(r'[\w\-]+'))
-      self.take('⇒')
-      switch.append(self.parseOr())
-
-    return tuple(switch)
+    return self.parseOr()
 
   def parseOr(self):
     items = set()
@@ -109,7 +91,7 @@ class Bnf:
       return ('repeat', lo, hi, e)
     return e
 
-  # Avoid capturing strings followed by '=' because that is switch name
+  # Avoid capturing strings followed by '=' because that is switch name TODO clean up no switch!!
   ident_reg = r'^((?:[\w-]|\+\w)+)(\([\w(),<≤/\+-]+\))?(?!\s*=)'
 
   def parseSingle(self):

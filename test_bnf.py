@@ -121,11 +121,6 @@ def test_parens():
   assert g.expr == ("concat", "x", ("repeat", 2, 2, ("rule", "hex")), "-")
 
 
-def test_switch():
-  g = lib.Bnf('t=a⇒"-" t=b⇒"+"')
-  assert g.expr == ("switch", "t", "a", "-", "b", "+")
-
-
 def test_empty():
   g = lib.Bnf(' ')
   assert g.expr == ('concat',)
