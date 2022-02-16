@@ -61,13 +61,24 @@ def test_rules():
 
 def test_lookarounds():
   g = lib.Bnf('[ lookahead = ns-plain-safe(c) ]')
-  assert g.expr == ("lookahead", True, ("rule", "ns-plain-safe", "c"))
+  assert g.expr == ("?=", ("rule", "ns-plain-safe", "c"))
 
   g = lib.Bnf('[ lookahead ≠ ns-char ]')
-  assert g.expr == ("lookahead", False, ("rule", "ns-char"))
+  assert g.expr == ("?!", ("rule", "ns-char"))
 
   g = lib.Bnf('[ lookbehind = ns-char ]')
-  assert g.expr == ("lookbehind", ("rule", "ns-char"))
+  assert g.expr == ("?<=", ("rule", "ns-char"))
+
+
+def test_special():
+  g = lib.Bnf('<start-of-line>')
+  assert g.expr == ("^",)
+
+  g = lib.Bnf('<end-of-input>')
+  assert g.expr == ("$",)
+
+  g = lib.Bnf('<empty>')
+  assert g.expr == ("concat",)
 
 
 def test_or():

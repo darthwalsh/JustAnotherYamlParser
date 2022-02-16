@@ -23,12 +23,15 @@ class Bnf:
     x30                  Escaped character is str "0"
     [xA0-xD7FF]          Character range is exclusive range(0xA0, 0xD800)
     l-empty(n,c)         Production is tuple ("rule", "l-empty", "n", "c")
-    - Lookarounds
-    [ lookahead = 'c' ]  Production is ("lookahead", true, "c")
-    [ lookahead ≠ 'c' ]  Production is ("lookahead", false, "c")
-    [ lookbehind = 'c' ] Production is ("lookbehind", "c")
+    - Lookarounds produce regex
+    [ lookahead = 'c' ]  Production is ("?=", "c")
+    [ lookahead ≠ 'c' ]  Production is ("?!", "c")
+    [ lookbehind = 'c' ] Production is ("?<=", "c")
+    - Special productions also produce regex (different DOTALL)
+    <start-of-line>      Start of line is ("^",)
+    <end-of-input>       End of whole text stream is ("$",)
+    <empty>              Empty string is redundant -- would already be ("concat",)
     TODO fix below
-    - A special production
     "a" "b"              Concatenation is tuple ("concat", "a", "b")
     "a" | "b"            Choice is frozenset({"a", "b"})
     "a"?                 Option is tuple ("repeat", 0, 1, "a")
@@ -134,12 +137,15 @@ class Bnf:
       return "rule", name, *args
     elif self.try_take(r'\[ look'):
       return self.parseLookaround()
+    elif self.try_take('<'):
+      return self.parseSpecial()
     elif self.try_take(r'\('):
       parens = self.parse()
       self.take(r'\)')
       return parens
     else:
       return None
+
 
   def parseLookaround(self):
     if self.try_take('ahead'):
@@ -148,12 +154,20 @@ class Bnf:
         self.take('≠')
       e = self.parseSingle()
       self.take(']')
-      return ("lookahead", pos, e)
-    
+      return ("?=" if pos else "?!", e)
+
     self.take('behind =')
     e = self.parseSingle()
     self.take(']')
-    return ("lookbehind", e)
+    return ("?<=", e)
+
+
+  def parseSpecial(self):
+    if self.try_take('start-of-line>'): return ("^",)
+    if self.try_take('end-of-input>'): return ("$",)
+
+    self.take('empty>')
+    return ("concat",)
 
 
   def parseString(self):
