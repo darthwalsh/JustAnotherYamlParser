@@ -21,13 +21,13 @@ def generate_bnf(md_text):
 
 
 md_file = (Path(__file__).parent / 'spec' / 'spec' / '1.2.2' / 'spec.md').resolve()
-with open(md_file, 'r') as f:
+with open(md_file, 'r', encoding="utf-8") as f:
   md_text = f.read()
 
 bnf_text = generate_bnf(md_text)
 
 bnf_file = (Path(__file__).parent / 'productions.bnf').resolve()
-with open(bnf_file, 'w') as f:
+with open(bnf_file, 'w', encoding="utf-8") as f:
   f.write(bnf_text)
 
 #TODO once parsing is done, compare before/after of parsed BNF

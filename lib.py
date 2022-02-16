@@ -185,7 +185,7 @@ class Lib:
 
   def load_defs(self):
     productions_path = (Path(__file__).parent / 'productions.bnf').resolve()
-    with open(productions_path, encoding="utf-8") as f:
+    with open(productions_path, 'r', encoding="utf-8") as f:
       productions = f.read()
 
     for name, text in split_defs(productions):
