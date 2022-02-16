@@ -14,6 +14,14 @@ def test_char():
   g = lib.Bnf('"c"')
   assert g.expr == 'c'
 
+def test_string():
+  g = lib.Bnf('"abc"')
+  assert g.expr == 'abc'
+
+def test_singlequote():
+  g = lib.Bnf("'$'")
+  assert g.expr == '$'
+
 
 def test_str():
   g = lib.Bnf('"y" "a" "m" "l"')

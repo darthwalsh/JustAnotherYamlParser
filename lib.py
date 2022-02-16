@@ -15,8 +15,13 @@ def solo(items, default=None):
 class Bnf:
   """Automatic parse rule based on bnf rule text
 
+  Spec 4.1. Production Syntax
   Represents different entries using python expressions:
-    "0"             Text character is str "0"
+
+    TODO fix all these!!!
+
+    "abc"           Text string is str "abc"
+    'c'             Text character is str "c"
     #x30            Escaped character is str "0"
     [#x30-#x39]     Character range is exclusive range(0x30, 0x40)
     "a" "b"         Concatenation is tuple ("concat", "a", "b")
@@ -31,8 +36,8 @@ class Bnf:
   """
 
   def __init__(self, text: str):
-    #TODO maybe comments have semantics?
-    self.text = re.sub(r'/\*.*?\*/', '', text, flags=re.DOTALL).strip()
+    # Comments shouldn't have semantics
+    self.text = re.sub(r'# .*', '', text).strip()
     self.i = 0
     self.expr = self.parse()
     if self.i < len(self.text):
@@ -151,6 +156,16 @@ def str_concat(head, tail):
   return solo((head, *(tail if tail is not None else ())))
 
 
+def split_defs(bnf_text):
+  lines = bnf_text.split('\n')
+  def_lines = [i for i, line in enumerate(lines) if '::=' in line] + [len(lines)]
+
+  for b, e in zip(def_lines, def_lines[1:]):
+    def_str = '\n'.join(lines[b:e]).strip()
+    name, text = (s.strip() for s in def_str.split('::='))
+    yield name, text
+
+
 class Lib:
 
   def __init__(self):
@@ -164,13 +179,13 @@ class Lib:
   def load_defs(self):
     productions_path = (Path(__file__).parent / 'productions.bnf').resolve()
     with open(productions_path, encoding="utf-8") as f:
-      productions = f.read().split('\n\n')
+      productions = f.read()
 
-    for p in filter(None, productions):
-      name, text = (s.strip() for s in p.split('::='))
+    for name, text in split_defs(productions):
       name = Bnf(name).expr[1]
       #TODO hardcode c-indentation-indicator and c-chomping-indicator
-      if name in self.bnf or name in ('c-indentation-indicator', 'c-chomping-indicator'):
+      # if name in self.bnf or name in ('c-indentation-indicator', 'c-chomping-indicator'):
+      if name in self.bnf:
         continue
       try:
         rule = Bnf(text)
