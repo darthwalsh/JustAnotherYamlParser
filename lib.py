@@ -17,20 +17,20 @@ class Bnf:
 
   Spec 4.1. Production Syntax
   Represents different entries using python expressions:
-
-    TODO fix all these!!!
-
-    "abc"           Text string is str "abc"
-    'c'             Text character is str "c"
-    #x30            Escaped character is str "0"
-    [#x30-#x39]     Character range is exclusive range(0x30, 0x40)
+    - Atomic terms:
+    "abc"           Text string is str "abc" (no backslash escaping)
+    'c'             Text character is str "c" (no backslash escaping)
+    x30            Escaped character is str "0"
+    [xA0-xD7FF]     Character range is exclusive range(0xA0, 0xD800)
+    l-empty(n,c)    Production is tuple ("rule", "l-empty", "n", "c")
+    TODO fix below:
+    - TODO Lookaround
     "a" "b"         Concatenation is tuple ("concat", "a", "b")
     "a" | "b"       Choice is frozenset({"a", "b"})
     "a"?            Option is tuple ("repeat", 0, 1, "a")
     "a"*            Repeat is tuple ("repeat", 0, inf, "a")
     "a"+            Repeat is tuple ("repeat", 1, inf, "a")
     "a" × 4         Repeat is tuple ("repeat", 4, 4, "a")
-    l-empty(n,c)    Rule is tuple ("rule", "l-empty", "n", "c")
     dig - "0" - "1" Difference is tuple ("diff", ("rule", "dig"), "0", "1")
     t=a⇒"-" t=b⇒"+" Switch is tuple ("switch", "t", "a", "-", "b", "+")
   """
@@ -102,20 +102,27 @@ class Bnf:
       return ('repeat', lo, hi, e)
     return e
 
+  def parseString(self):
+    cs = []
+    while not self.try_take('"'):
+      cs.append(self.take())
+    return ''.join(cs)
+
   # Avoid capturing strings followed by '=' because that is switch name
   ident_reg = r'^((?:[\w-]|\+\w)+)(\([\w(),<≤/\+-]+\))?(?!\s*=)'
 
   def parseSingle(self):
     if self.try_take('"'):
-      self.try_take(r'\\')
-      c = self.take()
-      self.take('"')
+      return self.parseString()
+    if self.try_take("'"):
+      c = self.take() # \ isn't used as an escape
+      self.take("'")
       return c
-    elif self.try_take('#x'):
+    elif self.try_take('x'):
       return chr(int(self.take(r'[0-9A-F]{1,6}'), 16))
-    elif self.try_take(r'\[#x'):
+    elif self.try_take(r'\[x'):
       begin = int(self.take(r'[0-9A-F]{1,6}'), 16)
-      self.take('-#x')
+      self.take('-x')
       end = int(self.take(r'[0-9A-F]{1,6}'), 16) + 1
       self.take(r'\]')
       return range(begin, end)
