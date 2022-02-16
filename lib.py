@@ -41,8 +41,12 @@ class Bnf:
   """
 
   def __init__(self, text: str):
-    # Comments shouldn't have semantics
+    # '# Comments' shouldn't have semantics
     self.text = re.sub(r'# .*', '', text).strip()
+
+    #TODO some comments have semantics!
+    # Not in spec...
+    self.text = re.sub(r'/\*.*?\*/', '', self.text, flags=re.DOTALL)
     self.i = 0
     self.expr = self.parse()
     if self.i < len(self.text):
