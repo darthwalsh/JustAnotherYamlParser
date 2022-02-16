@@ -101,14 +101,9 @@ def test_plus():
   assert g.expr == ("repeat", 1, math.inf, "a")
 
 
-def test_times():
-  g = lib.Bnf('"a" × 4')
+def test_curlyrepeat():
+  g = lib.Bnf('"a"{4}')
   assert g.expr == ("repeat", 4, 4, "a")
-
-
-def test_times_n():
-  g = lib.Bnf('"a" × n')
-  assert g.expr == ("repeat", "n", "n", "a")
 
 
 def test_diff():
@@ -122,7 +117,7 @@ def test_2diff():
 
 
 def test_parens():
-  g = lib.Bnf('"x" (hex × 2 ) "-"')
+  g = lib.Bnf('"x" (hex{2} ) "-"')
   assert g.expr == ("concat", "x", ("repeat", 2, 2, ("rule", "hex")), "-")
 
 

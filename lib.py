@@ -33,11 +33,11 @@ class Bnf:
     <empty>              Empty string is redundant -- would already be ("concat",)
     TODO fix below
     "a" "b"              Concatenation is tuple ("concat", "a", "b")
-    "a" | "b"            Choice is frozenset({"a", "b"})
+    "a" | "b"            Alternation is frozenset({"a", "b"})
     "a"?                 Option is tuple ("repeat", 0, 1, "a")
     "a"*                 Repeat is tuple ("repeat", 0, inf, "a")
     "a"+                 Repeat is tuple ("repeat", 1, inf, "a")
-    "a" × 4              Repeat is tuple ("repeat", 4, 4, "a")
+    "a"{4}               Repeat is tuple ("repeat", 4, 4, "a")
     dig - "0" - "1"      Difference is tuple ("diff", ("rule", "dig"), "0", "1")
     t=a⇒"-" t=b⇒"+"      Switch is tuple ("switch", "t", "a", "-", "b", "+")
   """
@@ -97,15 +97,15 @@ class Bnf:
 
   def parseRepeat(self):
     e = self.parseSingle()
-    if c := self.try_take('[+?*×]'):
+    if c := self.try_take('[+?*{]'):
       lo, hi = 0, math.inf
       if c == '+':
         lo = 1
       elif c == '?':
         hi = 1
-      elif c == '×':
-        count = self.take(r'\w+')
-        lo = hi = int(count) if count.isdigit() else count
+      elif c == '{':
+        lo = hi = int(self.take(r'\d+'))
+        self.take('}')
       return ('repeat', lo, hi, e)
     return e
 
