@@ -95,8 +95,8 @@ class Bnf:
       return ('repeat', lo, hi, e)
     return e
 
-  # Avoid capturing strings followed by '=' because that is switch name TODO clean up no switch!!
-  ident_reg = r'^((?:[\w-]|\+\w)+)(\([\w(),<≤/\+-]+\))?(?!\s*=)'
+  # Rule names can contain '+' so if followed by a letter it's part of the name not a regex repeat.
+  ident_reg = r'^((?:[\w-]|\+\w)+)(\([\w(),<≤/\+-]+\))?'
 
   def parseSingle(self):
     if self.try_take('"'):
@@ -210,9 +210,8 @@ class Lib:
       productions = f.read()
 
     for name, text in split_defs(productions):
-      name = Bnf(name).expr[1]
-      #TODO hardcode c-indentation-indicator and c-chomping-indicator
-      # if name in self.bnf or name in ('c-indentation-indicator', 'c-chomping-indicator'):
+      name = solo(Bnf(name).expr[1:]) # now rules with args are tuples
+      # TODO Figure out how to have variables in args. Captitalized matches on name matching, lowercase is num.
       if name in self.bnf:
         continue
       try:

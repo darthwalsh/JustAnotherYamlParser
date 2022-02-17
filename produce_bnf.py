@@ -29,5 +29,3 @@ bnf_text = generate_bnf(md_text)
 bnf_file = (Path(__file__).parent / 'productions.bnf').resolve()
 with open(bnf_file, 'w', encoding="utf-8") as f:
   f.write(bnf_text)
-
-#TODO once parsing is done, compare before/after of parsed BNF
