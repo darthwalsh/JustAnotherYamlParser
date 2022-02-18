@@ -35,7 +35,7 @@ def test_str():
 
 
 def test_empty():
-  assert get_lib().parse('', ('concat',)) == None
+  assert get_lib().parse('', ('concat',)) is None
 
 
 def test_range():
