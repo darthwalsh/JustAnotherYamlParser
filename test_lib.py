@@ -72,12 +72,6 @@ def test_times():
   assert get_lib().parse('aaaa', ("repeat", 4, 4, "a")) == 'aaaa'
 
 
-@pytest.mark.xfail  # TODO
-def test_times_n():
-  assert get_lib().parse(
-      'aaaa', ("repeat", "n", "n", "a")) == 'Figure out how to have variables?'
-
-
 def test_rules():
   assert get_lib().parse('x2A', ("rule", "ns-esc-8-bit")) == 'x2A'
 
@@ -94,8 +88,3 @@ def test_diff():
   with pytest.raises(ValueError) as e_info:
     get_lib().parse('5', diff)
   assert 'no results' in str(e_info.value)
-
-
-@pytest.mark.xfail # TODO
-def test_switch():
-  assert get_lib().parse('-', ("switch", "t", "a", "-", "b", "+")) == '-'

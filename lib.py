@@ -15,24 +15,38 @@ def solo(items, default=None):
 class Bnf:
   """Automatic parse rule based on bnf rule text
 
+  Spec 4.1. Production Syntax
   Represents different entries using python expressions:
-    "0"             Text character is str "0"
-    #x30            Escaped character is str "0"
-    [#x30-#x39]     Character range is exclusive range(0x30, 0x40)
-    "a" "b"         Concatenation is tuple ("concat", "a", "b")
-    "a" | "b"       Choice is frozenset({"a", "b"})
-    "a"?            Option is tuple ("repeat", 0, 1, "a")
-    "a"*            Repeat is tuple ("repeat", 0, inf, "a")
-    "a"+            Repeat is tuple ("repeat", 1, inf, "a")
-    "a" × 4         Repeat is tuple ("repeat", 4, 4, "a")
-    l-empty(n,c)    Rule is tuple ("rule", "l-empty", "n", "c")
-    dig - "0" - "1" Difference is tuple ("diff", ("rule", "dig"), "0", "1")
-    t=a⇒"-" t=b⇒"+" Switch is tuple ("switch", "t", "a", "-", "b", "+")
+    - Atomic terms:
+    "abc"                Text string is str "abc" (no backslash escaping)
+    'c'                  Text character is str "c" (no backslash escaping)
+    x30                  Escaped character is str "0"
+    [xA0-xD7FF]          Character range is exclusive range(0xA0, 0xD800)
+    l-empty(n,c)         Production is tuple ("rule", "l-empty", "n", "c")
+    - Lookarounds produce regex
+    [ lookahead = 'c' ]  Production is ("?=", "c")
+    [ lookahead ≠ 'c' ]  Production is ("?!", "c")
+    [ lookbehind = 'c' ] Production is ("?<=", "c")
+    - Special productions also produce regex (different DOTALL)
+    <start-of-line>      Start of line is ("^",)
+    <end-of-input>       End of whole text stream is ("$",)
+    <empty>              Empty string is redundant -- would already be ("concat",)
+    "a" "b"              Concatenation is tuple ("concat", "a", "b")
+    "a" | "b"            Alternation is frozenset({"a", "b"})
+    "a"?                 Option is tuple ("repeat", 0, 1, "a")
+    "a"*                 Repeat is tuple ("repeat", 0, inf, "a")
+    "a"+                 Repeat is tuple ("repeat", 1, inf, "a")
+    "a"{4}               Repeat is tuple ("repeat", 4, 4, "a")
+    dig - "0" - "1"      Difference is tuple ("diff", ("rule", "dig"), "0", "1")
   """
 
   def __init__(self, text: str):
-    #TODO maybe comments have semantics?
-    self.text = re.sub(r'/\*.*?\*/', '', text, flags=re.DOTALL).strip()
+    # '# Comments' shouldn't have semantics
+    self.text = re.sub(r'# .*', '', text).strip()
+
+    #TODO some comments have semantics!
+    # Not in spec...
+    self.text = re.sub(r'/\*.*?\*/', '', self.text, flags=re.DOTALL)
     self.i = 0
     self.expr = self.parse()
     if self.i < len(self.text):
@@ -40,23 +54,7 @@ class Bnf:
                        self.expr)
 
   def parse(self):
-    return self.parseSwitch()
-
-  def parseSwitch(self):
-    prefix = r'(\w+)\s*=\s*([\w\-]+)\s*⇒'
-    signal = self.try_take(prefix)
-    if not signal:
-      return self.parseOr()
-
-    var, val = re.match(prefix, signal).groups()
-    switch = ["switch", var, val, self.parseOr()]
-    while self.try_take(var):
-      self.take('=')
-      switch.append(self.take(r'[\w\-]+'))
-      self.take('⇒')
-      switch.append(self.parseOr())
-
-    return tuple(switch)
+    return self.parseOr()
 
   def parseOr(self):
     items = set()
@@ -85,32 +83,33 @@ class Bnf:
 
   def parseRepeat(self):
     e = self.parseSingle()
-    if c := self.try_take('[+?*×]'):
+    if c := self.try_take('[+?*{]'):
       lo, hi = 0, math.inf
       if c == '+':
         lo = 1
       elif c == '?':
         hi = 1
-      elif c == '×':
-        count = self.take(r'\w+')
-        lo = hi = int(count) if count.isdigit() else count
+      elif c == '{':
+        lo = hi = int(self.take(r'\d+'))
+        self.take('}')
       return ('repeat', lo, hi, e)
     return e
 
-  # Avoid capturing strings followed by '=' because that is switch name
-  ident_reg = r'^((?:[\w-]|\+\w)+)(\([\w(),<≤/\+-]+\))?(?!\s*=)'
+  # Rule names can contain '+' so if followed by a letter it's part of the name not a regex repeat.
+  ident_reg = r'^((?:[\w-]|\+\w)+)(\([\w(),<≤/\+-]+\))?'
 
   def parseSingle(self):
     if self.try_take('"'):
-      self.try_take(r'\\')
-      c = self.take()
-      self.take('"')
+      return self.parseString()
+    if self.try_take("'"):
+      c = self.take() # \ isn't used as an escape
+      self.take("'")
       return c
-    elif self.try_take('#x'):
+    elif self.try_take('x'):
       return chr(int(self.take(r'[0-9A-F]{1,6}'), 16))
-    elif self.try_take(r'\[#x'):
+    elif self.try_take(r'\[x'):
       begin = int(self.take(r'[0-9A-F]{1,6}'), 16)
-      self.take('-#x')
+      self.take('-x')
       end = int(self.take(r'[0-9A-F]{1,6}'), 16) + 1
       self.take(r'\]')
       return range(begin, end)
@@ -122,12 +121,46 @@ class Bnf:
 
       args = args.strip('()').split(',') if args else ()
       return "rule", name, *args
+    elif self.try_take(r'\[ look'):
+      return self.parseLookaround()
+    elif self.try_take('<'):
+      return self.parseSpecial()
     elif self.try_take(r'\('):
       parens = self.parse()
       self.take(r'\)')
       return parens
     else:
       return None
+
+
+  def parseLookaround(self):
+    if self.try_take('ahead'):
+      pos = bool(self.try_take('='))
+      if not pos:
+        self.take('≠')
+      e = self.parseSingle()
+      self.take(']')
+      return ("?=" if pos else "?!", e)
+
+    self.take('behind =')
+    e = self.parseSingle()
+    self.take(']')
+    return ("?<=", e)
+
+
+  def parseSpecial(self):
+    if self.try_take('start-of-line>'): return ("^",)
+    if self.try_take('end-of-input>'): return ("$",)
+
+    self.take('empty>')
+    return ("concat",)
+
+
+  def parseString(self):
+    cs = []
+    while not self.try_take('"'):
+      cs.append(self.take())
+    return ''.join(cs)
 
   def try_take(self, pattern='.') -> str:
     m = re.match(pattern, self.text[self.i:])
@@ -151,6 +184,16 @@ def str_concat(head, tail):
   return solo((head, *(tail if tail is not None else ())))
 
 
+def split_defs(bnf_text):
+  lines = bnf_text.split('\n')
+  def_lines = [i for i, line in enumerate(lines) if '::=' in line] + [len(lines)]
+
+  for b, e in zip(def_lines, def_lines[1:]):
+    def_str = '\n'.join(lines[b:e]).strip()
+    name, text = (s.strip() for s in def_str.split('::='))
+    yield name, text
+
+
 class Lib:
 
   def __init__(self):
@@ -163,14 +206,13 @@ class Lib:
 
   def load_defs(self):
     productions_path = (Path(__file__).parent / 'productions.bnf').resolve()
-    with open(productions_path, encoding="utf-8") as f:
-      productions = f.read().split('\n\n')
+    with open(productions_path, 'r', encoding="utf-8") as f:
+      productions = f.read()
 
-    for p in filter(None, productions):
-      name, text = (s.strip() for s in p.split('::='))
-      name = Bnf(name).expr[1]
-      #TODO hardcode c-indentation-indicator and c-chomping-indicator
-      if name in self.bnf or name in ('c-indentation-indicator', 'c-chomping-indicator'):
+    for name, text in split_defs(productions):
+      name = solo(Bnf(name).expr[1:]) # now rules with args are tuples
+      # TODO Figure out how to have variables in args. Captitalized matches on name matching, lowercase is num.
+      if name in self.bnf:
         continue
       try:
         rule = Bnf(text)

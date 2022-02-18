@@ -24,20 +24,10 @@ Run tets:
 
     pytest
 
-## Regenerating productions.bnf
+## Regenerating 1.2.2 productions.bnf
 
-At https://yaml.org/spec/1.2.1/ run in dev console:
+https://yaml.org/spec/1.2.2/ contains HTML for the spec, but [yaml/yaml-spec](https://github.com/yaml/yaml-spec.git) has the markdown source.
 
-```javascript
-copy([...new Set([...document.getElementsByClassName("productionset")]
-    .map(x => x.innerText))]
-  .join('\n')
-  .replace(/\s*\[\d+\]\s*/g, '\n\n')
-  .replace(/\\/g, '\\\\')
-  .replace(/"/g, '\\"')
-  .replace(/[“”]/g, '"')
-  .replace(/\xA0/g, ' ')
-  .replace(/\t/g, ' ')
-  .replace(/(\S+) ::= ([^\n]+(?:\n[^\n]+)*)/g, (m, n, d) => 
-    `${n} ::= ${d.replace(/\n/g, '\n' + ' '.repeat(5 + n.length))}`))
-```
+Run script `produce_bnf.py` which uses yaml-spec as a submodule to produce `productions.bnf`.
+
+At https://yaml.org/spec/1.2.2/ run in dev console:
