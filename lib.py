@@ -1,6 +1,5 @@
 from pathlib import Path
 from typing import Callable
-import datetime
 import math
 import re
 import sys
@@ -132,7 +131,6 @@ class Bnf:
     else:
       return None
 
-
   def parseLookaround(self):
     if self.try_take('ahead'):
       pos = bool(self.try_take('='))
@@ -147,14 +145,12 @@ class Bnf:
     self.take(']')
     return ("?<=", e)
 
-
   def parseSpecial(self):
     if self.try_take('start-of-line>'): return ("^",)
     if self.try_take('end-of-input>'): return ("$",)
 
     self.take('empty>')
     return ("concat",)
-
 
   def parseString(self):
     cs = []

@@ -14,17 +14,17 @@ from node import node_value as nv
 
 
 def test_bool():
-  assert nv('true', 'bool') == True
-  assert nv('FALSE') == False
+  assert nv('true', 'bool') is True
+  assert nv('FALSE') is False
 
   assert nv('FAlse') == 'FAlse'
   assert nv('y ') == 'y '
 
 
 def test_null():
-  assert nv('null', 'null') == None
-  assert nv('~') == None
-  assert nv('') == None
+  assert nv('null', 'null') is None
+  assert nv('~') is None
+  assert nv('') is None
 
   assert nv(' ') == ' '
 

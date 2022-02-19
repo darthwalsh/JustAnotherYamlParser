@@ -74,7 +74,7 @@ def parse_float(s):
     if s == '.': return _fail
     return mult * float(s.replace('_', ''))
 
-  if m := exact_match(r'[0-9][0-9_]*(:[0-5]?[0-9])+\.[0-9_]*', s):
+  if exact_match(r'[0-9][0-9_]*(:[0-5]?[0-9])+\.[0-9_]*', s):
     ss = 0.0
     for p in s.split(':'):
       ss = ss * 60 + float(p.replace('_', ''))
@@ -134,7 +134,7 @@ def parse_binary(s):
   return base64.b64decode(re.sub(r'\s', '', s), validate=True)
 
 
-def node_value(s, schema = None):
+def node_value(s, schema=None):
   if not isinstance(s, str):
     return s
 
