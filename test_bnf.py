@@ -127,6 +127,11 @@ def test_empty():
 
 
 def test_comment():
+  g = lib.Bnf(' dig /* Empty */ ')
+  assert g.expr == ("rule", "dig")
+
+
+def test_commenthash():
   g = lib.Bnf(' # Empty ')
   assert g.expr == ('concat',)
 
