@@ -194,6 +194,7 @@ class Lib:
 
   def __init__(self):
     self.bnf = {}
+    self.load_defs()
 
   def add(self, name, rule):
     if name in self.bnf:
