@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 import math
@@ -177,7 +178,13 @@ class Bnf:
 def str_concat(head, tail):
   if isinstance(head, str) and isinstance(tail, str):
     return head + tail
-  return solo((head, *(tail if tail is not None else ())))
+  if tail is None:
+    return head
+  try:
+    comb = (head, *tail)
+  except:
+    return (head, tail)
+  return solo(comb)
 
 
 def split_defs(bnf_text):
@@ -189,12 +196,19 @@ def split_defs(bnf_text):
     name, text = (s.strip() for s in def_str.split('::='))
     yield name, text
 
+@dataclass(frozen=True)
+class ParseResult:
+  name: str
+  start: int
+  end: int
+  expr: object
 
 class Lib:
 
-  def __init__(self):
+  def __init__(self, *, show_parse=False):
     self.bnf = {}
     self.load_defs()
+    self.show_parse = show_parse
 
   def add(self, name, rule):
     if name in self.bnf:
@@ -264,7 +278,8 @@ class Lib:
                   ii, dec, lambda vv, iii: cb(str_concat(v, vv), iii)))
 
       elif kind == 'rule':
-        self.resolve(i, self.bnf[expr[1]].expr, cb)
+        cb2 = (lambda v, ii: cb(ParseResult(expr[1], i, ii, v), ii)) if self.show_parse else cb
+        self.resolve(i, self.bnf[expr[1]].expr, cb2)
 
       elif kind == 'diff':
         _, e, *subtrahends = expr

@@ -6,6 +6,7 @@
       pytest test_lib.py
 """
 
+from distutils.ccompiler import gen_lib_options
 import lib
 import math
 import pytest
@@ -75,3 +76,17 @@ def test_diff():
   with pytest.raises(ValueError) as e_info:
     library.parse('5', diff)
   assert 'no results' in str(e_info.value)
+
+
+tree_lib = lib.Lib(show_parse=True)
+from lib import ParseResult as P
+
+def test_tree_trivial_rule():
+  assert tree_lib.parse('A', ("rule", "ns-hex-digit")) == P('ns-hex-digit', 0, 1, 'A')
+
+def test_tree_repeat():
+  assert tree_lib.parse('ABCD', ("repeat", 4, 4, ("rule", "ns-hex-digit"))) == (P('ns-hex-digit', 0, 1, 'A'), P('ns-hex-digit', 1, 2, 'B'), P('ns-hex-digit', 2, 3, 'C'), P('ns-hex-digit', 3, 4, 'D'))
+
+def test_tree_rule():
+  assert tree_lib.parse('x2A', ("rule", "ns-esc-8-bit")) == P('ns-esc-8-bit', 0, 3, ('x', P('ns-hex-digit', 1, 2, P('ns-dec-digit', 1, 2, '2')), P('ns-hex-digit', 2, 3, 'A')))
+  
