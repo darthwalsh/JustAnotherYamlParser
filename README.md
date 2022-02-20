@@ -24,6 +24,12 @@ Run tets:
 
     pytest
 
+## Roadmap
+
+- [ ] Debug parsing showing how each rule is applied
+- [ ] Parsing *presentation* (text) into *serialization* tree
+- [ ] Composing *serialization* into *representation* JSON
+
 ## Regenerating 1.2.2 productions.bnf
 
 https://yaml.org/spec/1.2.2/ contains HTML for the spec, but [yaml/yaml-spec](https://github.com/yaml/yaml-spec.git) has the markdown source.
