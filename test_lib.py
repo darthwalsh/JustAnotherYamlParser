@@ -41,12 +41,6 @@ def test_or_repeat():
   assert library.parse('0', {'0', '0'}) == '0'
 
 
-@pytest.mark.xfail  # TODO
-def test_or_many():
-  assert library.parse(
-      '0', {'0', '0'}) == 'Figure out multiple parse patterns'
-
-
 def test_star():
   assert library.parse('a', ("repeat", 0, math.inf, "a")) == 'a'
 
@@ -92,4 +86,17 @@ def test_tree_repeat():
 
 def test_tree_rule():
   assert tree_lib.parse('x2A', ("rule", "ns-esc-8-bit")) == P('ns-esc-8-bit', 0, 3, ('x', P('ns-hex-digit', 1, 2, P('ns-dec-digit', 1, 2, '2')), P('ns-hex-digit', 2, 3, 'A')))
+
+def test_tree_many_rules():
+  assert tree_lib.parse('!', {("rule", "c-non-specific-tag"), ("rule", "c-tag")}) == {P('c-non-specific-tag', 0, 1, '!'), P('c-tag', 0, 1, '!')}
+
+def test_tree_concat_many_rules():
+  opts = {("rule", "c-non-specific-tag"), ("rule", "c-tag")}
+
+  assert tree_lib.parse('!!', ('concat', opts, opts)) == {
+    (P('c-tag', 0, 1, '!'), P('c-tag', 1, 2, '!')),
+    (P('c-tag', 0, 1, '!'), P('c-non-specific-tag', 1, 2, '!')),
+    (P('c-non-specific-tag', 0, 1, '!'), P('c-tag', 1, 2, '!')),
+    (P('c-non-specific-tag', 0, 1, '!'), P('c-non-specific-tag', 1, 2, '!')),
+  }
   

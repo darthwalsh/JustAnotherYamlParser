@@ -178,7 +178,7 @@ class Bnf:
 def str_concat(head, tail):
   if isinstance(head, str) and isinstance(tail, str):
     return head + tail
-  if tail is None: # TODO move special case into concat
+  if tail is None:
     return head
   try:
     comb = (head, *tail)
@@ -254,17 +254,12 @@ class Lib:
       case set() | frozenset():
         for e in expr:
           yield from self.resolve(i, e)
-      case ('concat', *exprs):
-        nextI = i
-        items = []
-        for e in exprs:
-          (o, nextI), = self.resolve(nextI, e) # TODO hack to only expect one result
-          items.append(o)
-
-        result = None
-        for item in reversed(items):
-          result = str_concat(item, result)
-        yield result, nextI
+      case ('concat',):
+        yield None, i
+      case ('concat', e, *exprs):
+        for vv, ii in self.resolve(i, e):
+          for vvv, iii in self.resolve(ii, ('concat', *exprs)):
+            yield str_concat(vv, vvv), iii
       case ('repeat', lo, hi, e):
         if not lo:
           yield None, i
