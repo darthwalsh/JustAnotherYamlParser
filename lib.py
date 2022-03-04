@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable
+from typing import Iterator
 import math
 import re
 import sys
@@ -178,7 +178,7 @@ class Bnf:
 def str_concat(head, tail):
   if isinstance(head, str) and isinstance(tail, str):
     return head + tail
-  if tail is None:
+  if tail is None: # TODO move special case into concat
     return head
   try:
     comb = (head, *tail)
@@ -233,71 +233,59 @@ class Lib:
 
   def parse(self, text, expr):
     self.text = text
+
     results = set()
-    self.resolve(0, expr, lambda v, i: results.add(v) if i == len(text) else 0)
+    for result, lastI in self.resolve(0, expr):
+      if lastI == len(text):
+        results.add(result)
+
     if not results:
       raise ValueError('no results')
     return solo(results)
 
-  def resolve(self, i, expr, cb: Callable[[object, int], None]) -> None:
-    if isinstance(expr, str):
-      if i < len(self.text) and self.text[i] == expr:
-        cb(self.text[i], i + 1)
+  def resolve(self, i: int, expr: any) -> Iterator[tuple[object, int]]:
+    match expr:
+      case str(s):
+        if i < len(self.text) and self.text[i] == s:
+          yield s, i + 1
+      case range():
+        if i < len(self.text) and ord(self.text[i]) in expr:
+          yield self.text[i], i + 1
+      case set() | frozenset():
+        for e in expr:
+          yield from self.resolve(i, e)
+      case ('concat', *exprs):
+        nextI = i
+        items = []
+        for e in exprs:
+          (o, nextI), = self.resolve(nextI, e) # TODO hack to only expect one result
+          items.append(o)
 
-    elif isinstance(expr, range):
-      if i < len(self.text) and ord(self.text[i]) in expr:
-        cb(self.text[i], i + 1)
-
-    elif isinstance(expr, frozenset) or isinstance(expr, set):
-      for e in expr:
-        result = self.resolve(i, e, cb)
-
-    elif isinstance(expr, tuple):
-      kind = expr[0]
-
-      if kind == 'concat':
-        if len(expr) == 1:
-          cb(None, i)
-          return
-
-        self.resolve(
-            i, expr[1], lambda v, ii: self.resolve(
-                ii, ('concat', *expr[2:]), lambda vv, iii: cb(
-                    str_concat(v, vv), iii)))
-
-      elif kind == 'repeat':
-        _, lo, hi, e = expr
-
+        result = None
+        for item in reversed(items):
+          result = str_concat(item, result)
+        yield result, nextI
+      case ('repeat', lo, hi, e):
         if not lo:
-          cb(None, i)
-
+          yield None, i
         if hi:
           dec = ('repeat', max(lo - 1, 0), hi - 1, e)
-          self.resolve(
-              i, e, lambda v, ii: self.resolve(
-                  ii, dec, lambda vv, iii: cb(str_concat(v, vv), iii)))
-
-      elif kind == 'rule':
-        cb2 = (lambda v, ii: cb(ParseResult(expr[1], i, ii, v), ii)) if self.show_parse else cb
-        self.resolve(i, self.bnf[expr[1]].expr, cb2)
-
-      elif kind == 'diff':
-        _, e, *subtrahends = expr
-
-        allowed = True
-
-        def not_allowed(v, i):
-          nonlocal allowed
-          allowed = False
-
+          for vv, ii in self.resolve(i, e):
+            for vvv, iii in self.resolve(ii, dec):
+              yield str_concat(vv, vvv), iii
+      case ('rule', name):
+        rec = self.resolve(i, self.bnf[name].expr)
+        if self.show_parse:
+          for e, ii in rec:
+            yield ParseResult(name, i, ii, e), ii
+        else:
+          yield from rec
+      case ('diff', e, *subtrahends):
         for s in subtrahends:
-          self.resolve(i, s, not_allowed)
-
-        if allowed:
-          self.resolve(i, e, cb)
-
-      else:
-        raise ValueError('unknown tuple:', expr)
-
-    else:
-      raise ValueError('unknown type:', expr)
+          for o in self.resolve(i, s):
+            print(o)
+            return
+        if not any(any(self.resolve(i, s)) for s in subtrahends):
+          yield from self.resolve(i, e)
+      case _:
+        raise ValueError('unknown type:', expr)

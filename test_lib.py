@@ -6,7 +6,6 @@
       pytest test_lib.py
 """
 
-from distutils.ccompiler import gen_lib_options
 import lib
 import math
 import pytest
@@ -20,6 +19,10 @@ def test_single_char():
 
 def test_str():
   assert library.parse('az', ('concat', 'a', 'z')) == 'az'
+
+
+def test_concat():
+  assert library.parse('a3z', ('concat', 'a', range(0x30, 0x3A), 'z')) == 'a3z'
 
 
 def test_empty():
