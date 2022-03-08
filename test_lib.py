@@ -61,6 +61,20 @@ def test_rules():
   assert library.parse('x2A', ("rule", "ns-esc-8-bit")) == 'x2A'
 
 
+def test_rule_n_plus():
+  for i in range(3):
+    for j in range(3):
+      ii = ' ' * i
+      jj = "rule", "s-indent", str(j)
+      if i == j:
+        expected = ii if i else None
+        assert library.parse(ii, jj) == expected
+      else:
+        with pytest.raises(ValueError) as e_info:
+          library.parse(ii, jj)
+        assert 'no results' in str(e_info.value)
+
+
 def test_start():
   assert library.parse('\n', ('concat', ("^",), '\n', ("^",))) == '\n'
 

@@ -210,32 +210,24 @@ class Lib:
     self.load_defs()
     self.show_parse = show_parse
 
-  def add(self, name, rule):
-    if name in self.bnf:
-      raise ValueError(name, 'already in bnf')
-    self.bnf[name] = rule
-
   def load_defs(self):
     productions_path = (Path(__file__).parent / 'productions.bnf').resolve()
     with open(productions_path, 'r', encoding="utf-8") as f:
       productions = f.read()
 
     for name, text in split_defs(productions):
-      name = solo(Bnf(name).expr[1:]) # now rules with args are tuples
-      # TODO Figure out how to have variables in args. Captitalized matches on name matching, lowercase is num.
-      if name in self.bnf:
-        continue
+      _, name, *params = Bnf(name).expr
       try:
         rule = Bnf(text)
       except Exception as e:
         raise type(e)(f"{name}: {str(e)}").with_traceback(sys.exc_info()[2])
-      self.add(name, rule)
+      self.bnf.setdefault(name, []).append((params, rule.expr))
 
   def parse(self, text, expr):
     self.text = text
 
     results = set()
-    for result, lastI in self.resolve(0, expr):
+    for result, lastI in self.resolve(0, expr, {}):
       if lastI == len(text):
         results.add(result)
 
@@ -243,7 +235,21 @@ class Lib:
       raise ValueError('no results')
     return solo(results)
 
-  def resolve(self, i: int, expr: any) -> Iterator[tuple[object, int]]:
+  def new_frame(self, params, args, old_frame):
+    frame = {}
+    for param, arg in zip(params, (old_frame.get(arg, arg) for arg in args)):
+      if param.isdigit():
+        if param != arg: return None
+      elif param == 'n+1':
+        if arg == '0': return None
+        frame['n'] = str(int(arg)-1)
+      else:
+        if not param.isalpha():
+          raise NotImplementedError(param)
+        frame[param] = arg
+    return frame
+
+  def resolve(self, i: int, expr: any, frame: dict[str, str]) -> Iterator[tuple[object, int]]:
     match expr:
       case str(s):
         if i < len(self.text) and self.text[i] == s:
@@ -253,35 +259,42 @@ class Lib:
           yield self.text[i], i + 1
       case set() | frozenset():
         for e in expr:
-          yield from self.resolve(i, e)
+          yield from self.resolve(i, e, frame)
       case ('concat',):
         yield None, i
       case ('concat', e, *exprs):
-        for vv, ii in self.resolve(i, e):
-          for vvv, iii in self.resolve(ii, ('concat', *exprs)):
+        for vv, ii in self.resolve(i, e, frame):
+          for vvv, iii in self.resolve(ii, ('concat', *exprs), frame):
             yield str_concat(vv, vvv), iii
       case ('repeat', lo, hi, e):
         if not lo:
           yield None, i
         if hi:
           dec = ('repeat', max(lo - 1, 0), hi - 1, e)
-          for vv, ii in self.resolve(i, e):
-            for vvv, iii in self.resolve(ii, dec):
+          for vv, ii in self.resolve(i, e, frame):
+            for vvv, iii in self.resolve(ii, dec, frame):
               yield str_concat(vv, vvv), iii
-      case ('rule', name):
-        rec = self.resolve(i, self.bnf[name].expr)
-        if self.show_parse:
-          for e, ii in rec:
-            yield ParseResult(name, i, ii, e), ii
-        else:
-          yield from rec
+      case ('rule', name, *args):
+        for params, expr in self.bnf[name]:
+          if len(params) != len(args):
+            raise ValueError("arity mismatch")
+
+          new_frame = self.new_frame(params, args, frame)
+          if new_frame is None: continue
+          
+          rec = self.resolve(i, expr, new_frame)
+
+          if self.show_parse:
+            for e, ii in rec:
+              yield ParseResult(name, i, ii, e), ii
+          else:
+            yield from rec
       case ('diff', e, *subtrahends):
         for s in subtrahends:
-          for o in self.resolve(i, s):
-            print(o)
+          for o in self.resolve(i, s, frame):
             return
-        if not any(any(self.resolve(i, s)) for s in subtrahends):
-          yield from self.resolve(i, e)
+        if not any(any(self.resolve(i, s, frame)) for s in subtrahends):
+          yield from self.resolve(i, e, frame)
       case ('^',):
         if i == 0 or self.text[i - 1] == '\n':
           yield '', i

@@ -25,10 +25,11 @@ class LibHandler(SimpleHTTPRequestHandler):
     length = int(self.headers.get('content-length'))
     body = json.loads(self.rfile.read(length))
     text = body['text']
-    print(body['rule'], body['text'])
+    rule = body['rule'].strip(')').replace('(', ' ').replace(',', ' ').split()
+    print(rule, text)
 
     try:
-      result = self.lib.parse(body['text'], ('rule', body['rule']))
+      result = self.lib.parse(text, ('rule', *rule))
       success = True
     except Exception as e:
       result = traceback.format_exc()
@@ -38,14 +39,12 @@ class LibHandler(SimpleHTTPRequestHandler):
     self.send_header('Content-type', 'application/json')
     self.end_headers()
   
-    body = dict(result=result, success=success)
-    self.wfile.write(json.dumps(body, cls=DataClassJSONEncoder).encode('utf-8'))
+    response = dict(result=result, success=success)
+    self.wfile.write(json.dumps(response, cls=DataClassJSONEncoder).encode('utf-8'))
 
 def run_server():
-  lib = Lib(show_parse=True)
-  lib.load_defs()
   server_address = ('', 8001)
-  httpd = HTTPServer(server_address, lambda *_: LibHandler(lib, *_, directory=sys.path[0]))
+  httpd = HTTPServer(server_address, lambda *_: LibHandler(Lib(show_parse=True), *_, directory=sys.path[0]))
   print('serving http://localhost:8001')
   httpd.serve_forever()
 
