@@ -61,6 +61,14 @@ def test_rules():
   assert library.parse('x2A', ("rule", "ns-esc-8-bit")) == 'x2A'
 
 
+def test_start():
+  assert library.parse('\n', ('concat', ("^",), '\n', ("^",))) == '\n'
+
+
+def test_end():
+  assert library.parse('a', ('concat', 'a', ("$",))) == 'a'
+
+
 def test_diff():
   diff = ("diff", range(0x20, 0x7F), "0", range(0x35, 0x3A))
 

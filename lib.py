@@ -282,5 +282,11 @@ class Lib:
             return
         if not any(any(self.resolve(i, s)) for s in subtrahends):
           yield from self.resolve(i, e)
+      case ('^',):
+        if i == 0 or self.text[i - 1] == '\n':
+          yield '', i
+      case ('$',):
+        if i == len(self.text):
+          yield '', i
       case _:
         raise ValueError('unknown type:', expr)
