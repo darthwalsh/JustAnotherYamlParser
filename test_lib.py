@@ -75,6 +75,17 @@ def test_rule_n_plus():
         assert 'no results' in str(e_info.value)
 
 
+def test_rule_enum():
+  assert library.parse('-', ("rule", "c-chomping-indicator", 'STRIP')) == '-'
+  with pytest.raises(ValueError) as e_info:
+    library.parse('+', ("rule", "c-chomping-indicator", 'STRIP'))
+  assert 'no results' in str(e_info.value)
+
+  assert library.parse('+', ("rule", "c-chomping-indicator", 'KEEP')) == '+'
+  with pytest.raises(ValueError) as e_info:
+    library.parse('-', ("rule", "c-chomping-indicator", 'KEEP'))
+
+
 def test_start():
   assert library.parse('\n', ('concat', ("^",), '\n', ("^",))) == '\n'
 

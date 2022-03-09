@@ -235,10 +235,11 @@ class Lib:
       raise ValueError('no results')
     return solo(results)
 
+  enums = set('BLOCK-IN BLOCK-KEY BLOCK-OUT CLIP FLOW-IN FLOW-KEY FLOW-OUT KEEP STRIP'.split())
   def new_frame(self, params, args, old_frame):
     frame = {}
     for param, arg in zip(params, (old_frame.get(arg, arg) for arg in args)):
-      if param.isdigit():
+      if param.isdigit() or param in self.enums:
         if param != arg: return None
       elif param == 'n+1':
         if arg == '0': return None
