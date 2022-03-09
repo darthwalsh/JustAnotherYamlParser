@@ -157,4 +157,5 @@ def test_bad_string():
 
 def test_load():
   l = lib.Lib()
-  assert len(l.bnf) == 244
+  assert len(l.bnf) == 211
+  assert sum(len(defs) for defs in l.bnf.values()) == 244
