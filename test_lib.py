@@ -107,6 +107,9 @@ def test_diff():
     library.parse('5', diff)
   assert 'no results' in str(e_info.value)
 
+# def test_plain_node():
+#   assert library.parse('1.2', ("rule", "ns-plain", '0', 'FLOW-KEY')) == '1.2'
+# TODO implement lookbehind
 
 tree_lib = lib.Lib(show_parse=True)
 from lib import ParseResult as P
@@ -132,4 +135,3 @@ def test_tree_concat_many_rules():
     (P('c-non-specific-tag', 0, 1, '!'), P('c-tag', 1, 2, '!')),
     (P('c-non-specific-tag', 0, 1, '!'), P('c-non-specific-tag', 1, 2, '!')),
   }
-  

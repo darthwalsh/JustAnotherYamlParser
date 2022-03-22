@@ -6,6 +6,8 @@ import re
 import sys
 
 
+M_VAR_MAX = 6
+
 def solo(items, default=None):
   if len(items) == 1:
     return next(iter(items))
@@ -203,6 +205,40 @@ class ParseResult:
   end: int
   expr: object
 
+def find_vars(expr):
+  match expr:
+    case ('rule', _, *args):
+      return set(a for arg in args for a in arg.split('+') if a.isalpha() and a.islower() and len(a) == 1)
+    case (_, *es):
+      return set(v for e in es for v in find_vars(e))
+    case set() | frozenset():
+      return set(v for e in expr for v in find_vars(e))
+    case _:
+      return set() 
+
+def define_unbound(vars):
+  if not vars:
+    yield {}
+    return
+
+  var, *vars = vars
+  match var:
+    case 'm':
+      for f in define_unbound(vars):
+        for m in range(0, M_VAR_MAX):
+          yield f | {'m': m}
+    case 't':
+      for f in define_unbound(vars):
+        for t in 'CLIP KEEP STRIP'.split():
+          yield f | {'t': t}
+    case _:
+      raise ValueError(var)
+
+def automagically_define_unbound(expr: any, frame: dict[str, str]):
+  vars = find_vars(expr) - set(frame)
+  for f in define_unbound(vars):
+    yield f | frame
+
 class Lib:
 
   def __init__(self, *, show_parse=False):
@@ -282,14 +318,15 @@ class Lib:
 
           new_frame = self.new_frame(params, args, frame)
           if new_frame is None: continue
-          
-          rec = self.resolve(i, expr, new_frame)
 
-          if self.show_parse:
-            for e, ii in rec:
-              yield ParseResult(name, i, ii, e), ii
-          else:
-            yield from rec
+          for bound_frame in automagically_define_unbound(expr, new_frame):
+            rec = self.resolve(i, expr, bound_frame)
+
+            if self.show_parse:
+              for e, ii in rec:
+                yield ParseResult(name, i, ii, e), ii
+            else:
+              yield from rec
       case ('diff', e, *subtrahends):
         for s in subtrahends:
           for o in self.resolve(i, s, frame):
