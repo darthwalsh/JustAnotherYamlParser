@@ -35,5 +35,3 @@ Run tets:
 https://yaml.org/spec/1.2.2/ contains HTML for the spec, but [yaml/yaml-spec](https://github.com/yaml/yaml-spec.git) has the markdown source.
 
 Run script `produce_bnf.py` which uses yaml-spec as a submodule to produce `productions.bnf`.
-
-At https://yaml.org/spec/1.2.2/ run in dev console:

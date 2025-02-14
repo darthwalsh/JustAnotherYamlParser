@@ -3,4 +3,5 @@
 	url = git@github.com:yaml/yaml-test-suite.git
 [submodule "spec"]
 	path = spec
+  branch = main
 	url = https://github.com/yaml/yaml-spec.git
